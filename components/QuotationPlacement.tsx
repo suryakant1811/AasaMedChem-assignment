@@ -23,6 +23,8 @@ type QuotationPlacementProps = {
   products: ProductView[];
 };
 
+const ALL_UNITS: Unit[] = ['G', 'KG', 'ML', 'L', 'UNIT'];
+
 export function QuotationPlacement({ products }: QuotationPlacementProps) {
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -34,12 +36,20 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const selectableUnits = selectedProduct ? getSelectableUnitsForBaseUnit(selectedProduct.baseUnit) : [];
+  const selectableUnits: readonly Unit[] = selectedProduct ? getSelectableUnitsForBaseUnit(selectedProduct.baseUnit) : ALL_UNITS;
 
   function addToCart() {
     setError(null);
 
-    if (!selectedProduct || !quantity) return;
+    if (!selectedProduct) {
+      setError('Select a product first.');
+      return;
+    }
+
+    if (!quantity) {
+      setError('Enter a quantity.');
+      return;
+    }
 
     const enteredQuantity = new Decimal(quantity);
     if (!enteredQuantity.isFinite() || enteredQuantity.lte(0)) {
@@ -169,42 +179,46 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
               </select>
             </label>
 
-            {selectedProduct && (
-              <>
-                <label className="mt-4 space-y-2 block">
-                  <span className="text-sm font-medium text-slate-700">Quantity</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
+            <label className="mt-4 space-y-2 block">
+              <span className="text-sm font-medium text-slate-700">Quantity</span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                disabled={!selectedProduct}
+                placeholder={selectedProduct ? 'Enter quantity' : 'Select a product first'}
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              />
+            </label>
 
-                <label className="mt-4 space-y-2 block">
-                  <span className="text-sm font-medium text-slate-700">Unit</span>
-                  <select
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value as Unit)}
-                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
-                  >
-                    {selectableUnits.map((selectableUnit) => (
-                      <option key={selectableUnit} value={selectableUnit}>
-                        {selectableUnit}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+            <label className="mt-4 space-y-2 block">
+              <span className="text-sm font-medium text-slate-700">Unit</span>
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as Unit)}
+                disabled={!selectedProduct}
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              >
+                {selectableUnits.map((selectableUnit) => (
+                  <option key={selectableUnit} value={selectableUnit}>
+                    {selectableUnit}
+                  </option>
+                ))}
+              </select>
+              {selectedProduct ? (
+                <span className="block text-xs text-slate-500">
+                  Available units for this product: {selectableUnits.join(', ')}
+                </span>
+              ) : null}
+            </label>
 
-                {error ? <p className="mt-3 text-sm font-medium text-red-600">{error}</p> : null}
+            {error ? <p className="mt-3 text-sm font-medium text-red-600">{error}</p> : null}
 
-                <Button onClick={addToCart} className="w-full mt-4">
-                  Add to cart
-                </Button>
-              </>
-            )}
+            <Button onClick={addToCart} disabled={!selectedProduct || !quantity} className="w-full mt-4">
+              Add to cart
+            </Button>
           </div>
 
           <div className="border-t border-slate-200 pt-6">
