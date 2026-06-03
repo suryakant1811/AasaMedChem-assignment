@@ -49,7 +49,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200/50">
+    <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-7 shadow-sm shadow-slate-200/70">
       <div className="grid gap-6">
         <label className="space-y-2">
           <span className="text-sm font-medium text-slate-700">Email</span>
@@ -57,7 +57,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
             autoComplete="email"
             required
           />
@@ -69,7 +69,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
             autoComplete="current-password"
             required
           />
@@ -77,7 +77,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
         {error ? <p className="text-sm font-medium text-red-600">{error}</p> : null}
 
-        <Button type="submit" isLoading={isSubmitting} className="mt-4 w-full">
+        <Button type="submit" isLoading={isSubmitting} className="mt-2 w-full rounded-lg bg-slate-950 hover:bg-teal-900">
           Sign in
         </Button>
       </div>

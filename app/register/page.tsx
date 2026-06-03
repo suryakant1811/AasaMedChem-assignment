@@ -1,7 +1,9 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AuthShell } from '@/components/AuthShell';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,34 +19,47 @@ export default function RegisterPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, name, password, role }),
-      credentials: 'include',
-    });
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, name, password, role }),
+        credentials: 'include',
+      });
 
-    const data = await response.json();
-    setIsSubmitting(false);
+      const data = await response.json();
 
-    if (!response.ok) {
-      setError(data.error || 'Registration failed.');
-      return;
+      if (!response.ok) {
+        setError(data.error || 'Registration failed.');
+        return;
+      }
+
+      router.replace(role === 'SELLER' || role === 'BUYER' ? '/seller' : '/login');
+      router.refresh();
+    } catch {
+      setError('Registration failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.push(role === 'SELLER' ? '/seller' : '/login');
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-12">
-      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200/50">
-        <h1 className="text-3xl font-semibold text-slate-900">Create an account</h1>
-        <p className="mt-3 text-slate-600">Register as a seller or buyer to access the inventory system.</p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm shadow-slate-200/50">
+    <AuthShell
+      eyebrow="Verified access"
+      title="Create your account"
+      description="Join the marketplace to source pharma materials, manage quotations, and work with trusted suppliers."
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link href="/login" className="font-semibold text-teal-700 hover:text-teal-900">
+            Sign in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="rounded-lg border border-slate-200 bg-white p-7 shadow-sm shadow-slate-200/70">
         <div className="grid gap-6">
           <label className="space-y-2">
             <span className="text-sm font-medium text-slate-700">Name</span>
@@ -52,7 +67,8 @@ export default function RegisterPage() {
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
+              autoComplete="name"
               required
             />
           </label>
@@ -63,7 +79,8 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
+              autoComplete="email"
               required
             />
           </label>
@@ -74,7 +91,8 @@ export default function RegisterPage() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
+              autoComplete="new-password"
               required
             />
           </label>
@@ -84,7 +102,7 @@ export default function RegisterPage() {
             <select
               value={role}
               onChange={(event) => setRole(event.target.value)}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 transition focus:border-teal-600 focus:bg-white focus:outline-none"
             >
               <option value="SELLER">Seller</option>
               <option value="BUYER">Buyer</option>
@@ -96,12 +114,12 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-900 disabled:opacity-50"
           >
-            {isSubmitting ? 'Registering…' : 'Create account'}
+            {isSubmitting ? 'Creating account...' : 'Create account'}
           </button>
         </div>
       </form>
-    </main>
+    </AuthShell>
   );
 }

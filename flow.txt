@@ -1,0 +1,578 @@
+AasaMedChem Project Flow
+========================
+
+This file explains how the full project works so it can be explained clearly in an interview.
+
+
+1. High-Level Architecture
+--------------------------
+
+User Browser
+   |
+   v
+Next.js App Router
+   |
+   |-- app/ pages render UI
+   |-- components/ reusable UI pieces
+   |-- api/ routes handle login, register, logout, quotation API
+   |-- actions/ server actions handle quotation/product operations
+   |
+   v
+Prisma ORM
+   |
+   v
+Neon PostgreSQL Database
+
+
+In simple words:
+
+The frontend is built with Next.js and React components. The backend logic is inside Next.js API routes and server actions. Prisma is used to communicate with PostgreSQL. Neon provides the hosted PostgreSQL database. Tailwind CSS is used for styling.
+
+
+2. Main Folder Purpose
+----------------------
+
+app/
+  -> Contains routes and pages.
+  -> Example: /login, /register, /admin, /seller, /products, /quotations.
+
+app/api/
+  -> Contains backend API routes.
+  -> Example: login API, logout API, register API, quotation detail API.
+
+components/
+  -> Contains reusable UI components.
+  -> Example: Header, Button, Card, ProductCard, LoginForm, QuotationPlacement.
+
+lib/
+  -> Contains core business logic.
+  -> Example: auth, guards, Prisma client, pricing, unit conversion.
+
+actions/
+  -> Contains server actions.
+  -> Example: create quotation, get quotations, update quotation status.
+
+prisma/
+  -> Contains database schema, migrations, and seed script.
+
+types/
+  -> Contains shared TypeScript types.
+
+validations/
+  -> Contains Zod validation schemas for login, register, and product forms.
+
+
+3. Authentication Flow
+----------------------
+
+User enters email/password
+   |
+   v
+POST /api/auth/login
+   |
+   v
+Validate input using Zod
+   |
+   v
+Find user in database using Prisma
+   |
+   v
+Compare password using bcrypt
+   |
+   v
+Create JWT session token
+   |
+   v
+Store JWT in HTTP-only cookie
+   |
+   v
+Redirect user based on role
+
+
+Important files:
+
+app/api/auth/login/route.ts
+  -> Handles login request.
+
+lib/auth.ts
+  -> Hashes password, verifies password, creates JWT, reads current user.
+
+components/LoginForm.tsx
+  -> Client-side login form.
+
+app/login/page.tsx
+  -> Login page. If user is already logged in, redirects to dashboard.
+
+
+Interview explanation:
+
+"Authentication is email/password based. Passwords are hashed using bcrypt before storing. During login, the password is verified, then a JWT is created and stored in an HTTP-only cookie. The cookie is used to identify the current user on protected pages."
+
+
+4. Role-Based Access Flow
+-------------------------
+
+Request protected route
+   |
+   v
+middleware.ts checks auth_token cookie
+   |
+   v
+Verify JWT token
+   |
+   v
+Check role access
+   |
+   |-- ADMIN can access /admin
+   |-- SELLER and BUYER can access /seller and /quotations
+   |-- Logged-in users can access /products
+   |
+   v
+Allow page OR redirect
+
+
+Important files:
+
+middleware.ts
+  -> Protects routes before page loads.
+
+lib/authRoutes.ts
+  -> Defines which role can access which route.
+
+lib/guards.ts
+  -> Server-side role checks for pages and actions.
+
+
+Interview explanation:
+
+"I protect routes in two layers. First, middleware checks the JWT cookie and role before loading protected routes. Second, server-side guards and action-level checks protect sensitive operations like admin quotation updates."
+
+
+5. User Roles
+-------------
+
+ADMIN
+  -> Manage products.
+  -> Create, edit, delete product inventory.
+  -> View all quotations.
+  -> Approve, reject, or complete quotations.
+
+SELLER
+  -> Browse/search products.
+  -> Calculate price with unit conversion.
+  -> Create quotations.
+  -> View own quotation history.
+
+BUYER
+  -> Supported as an extra user role.
+  -> Uses the same user-side catalogue and quotation flow.
+
+
+6. Database Flow
+----------------
+
+Next.js code
+   |
+   v
+lib/prisma.ts
+   |
+   v
+Prisma Client
+   |
+   v
+DATABASE_URL from .env
+   |
+   v
+Neon PostgreSQL
+
+
+Important files:
+
+prisma/schema.prisma
+  -> Defines tables and enums.
+
+lib/prisma.ts
+  -> Creates Prisma client.
+
+.env
+  -> Stores DATABASE_URL and JWT_SECRET.
+
+
+Main database models:
+
+User
+  -> Stores users, password hash, and role.
+
+Product
+  -> Stores inventory item, SKU, category, base unit, stock quantity, price.
+
+Quotation
+  -> Stores quotation header: customer, status, total amount, seller user id.
+
+QuotationItem
+  -> Stores each product inside a quotation, entered unit, converted base quantity, price, total.
+
+
+7. Product Management Flow
+--------------------------
+
+Admin logs in
+   |
+   v
+Go to /admin/products
+   |
+   v
+View product list
+   |
+   |-- Add product
+   |-- Edit product
+   |-- Delete product
+   |
+   v
+Save data through Prisma
+   |
+   v
+Product table updated
+
+
+Important files:
+
+app/admin/products/page.tsx
+  -> Product list for admin.
+
+app/admin/products/new/page.tsx
+  -> Add product form.
+
+app/admin/products/[id]/page.tsx
+  -> Edit/delete product form.
+
+lib/products.ts
+  -> Product database functions.
+
+validations/productValidation.ts
+  -> Validates product form data.
+
+
+8. Unit Conversion Strategy
+---------------------------
+
+Supported units:
+
+Weight:
+  KG <-> G
+
+Volume:
+  L <-> ML
+
+Count:
+  UNIT
+
+
+Internal base units:
+
+Weight is stored as G.
+Volume is stored as ML.
+Count is stored as UNIT.
+
+
+Example:
+
+Seller enters:
+  2 KG
+
+System converts:
+  2 KG x 1000 = 2000 G
+
+Database stores:
+  quantity = 2
+  unit = KG
+  baseQuantity = 2000
+  baseUnit = G
+
+
+Important files:
+
+lib/units.ts
+  -> Defines dimensions and conversion helpers.
+
+lib/pricing.ts
+  -> Converts quantity and calculates price.
+
+
+Why this design:
+
+Using base units keeps calculations consistent. It also prevents invalid conversions like KG to ML because each unit belongs to a dimension: WEIGHT, VOLUME, or COUNT.
+
+
+9. Pricing Flow
+---------------
+
+Seller selects product
+   |
+   v
+Seller enters quantity and unit
+   |
+   v
+calculateProductPricing()
+   |
+   v
+Convert entered quantity to base quantity
+   |
+   v
+Multiply base quantity by product price
+   |
+   v
+Show INR total
+
+
+Formula:
+
+totalPrice = convertedBaseQuantity x pricePerBaseUnit
+
+
+Example:
+
+Product price:
+  Rs 150 per G
+
+Seller enters:
+  2 KG
+
+Converted base quantity:
+  2000 G
+
+Total:
+  2000 x 150 = Rs 300000
+
+
+Important files:
+
+lib/pricing.ts
+  -> calculateProductPricing()
+  -> formatINR()
+
+components/ProductCard.tsx
+  -> Shows price calculation in product catalogue.
+
+components/QuotationPlacement.tsx
+  -> Uses same pricing logic while creating quotation.
+
+
+10. Seller Quotation Flow
+-------------------------
+
+Seller logs in
+   |
+   v
+Go to /quotations/new
+   |
+   v
+Enter customer name
+   |
+   v
+Select product
+   |
+   v
+Enter quantity
+   |
+   v
+Select valid unit
+   |
+   v
+Add to cart
+   |
+   v
+System calculates base quantity and total price
+   |
+   v
+Place quotation
+   |
+   v
+Create quotation in database
+
+
+Important files:
+
+app/quotations/new/page.tsx
+  -> Loads products and renders quotation UI.
+
+components/QuotationPlacement.tsx
+  -> Main quotation creation component.
+
+actions/quotationActions.ts
+  -> createQuotation() saves quotation and items.
+
+
+Database result:
+
+Quotation
+  -> customer, seller id, status, total amount.
+
+QuotationItem
+  -> product id, entered quantity, entered unit, base quantity, base unit, unit price, total price.
+
+
+11. Admin Quotation Review Flow
+-------------------------------
+
+Admin logs in
+   |
+   v
+Go to /admin/quotations
+   |
+   v
+View all quotations
+   |
+   v
+Open quotation detail
+   |
+   v
+Check product, SKU, quantity, unit, base quantity, price, total
+   |
+   v
+Approve / Reject / Complete
+   |
+   v
+Status updated in database
+
+
+Important files:
+
+app/admin/quotations/page.tsx
+  -> Shows all quotations.
+
+app/admin/quotations/[id]/page.tsx
+  -> Shows quotation detail and status actions.
+
+app/api/quotations/[id]/route.ts
+  -> Admin-only quotation detail API.
+
+actions/quotationActions.ts
+  -> updateQuotationStatus() checks admin access and updates status.
+
+
+12. Product Catalogue Flow
+--------------------------
+
+Logged-in user opens /products
+   |
+   v
+Product list loads from database
+   |
+   v
+User searches by product name
+   |
+   v
+User filters by category
+   |
+   v
+Product cards show stock, unit options, conversion, and INR price
+
+
+Important files:
+
+app/products/page.tsx
+  -> Search and filter logic.
+
+components/ProductCard.tsx
+  -> Product pricing calculator UI.
+
+
+13. Register Flow
+-----------------
+
+User opens /register
+   |
+   v
+Enter name, email, password, role
+   |
+   v
+POST /api/auth/register
+   |
+   v
+Validate data using Zod
+   |
+   v
+Check if email already exists
+   |
+   v
+Hash password using bcrypt
+   |
+   v
+Create user in database
+   |
+   v
+Create auth cookie
+   |
+   v
+Redirect to user dashboard
+
+
+Important files:
+
+app/register/page.tsx
+app/api/auth/register/route.ts
+validations/authValidation.ts
+lib/auth.ts
+
+
+14. Logout Flow
+---------------
+
+User clicks Sign out
+   |
+   v
+POST /api/auth/logout
+   |
+   v
+Clear auth_token cookie
+   |
+   v
+Redirect to /login
+
+
+Important files:
+
+components/LogoutButton.tsx
+app/logout/page.tsx
+app/api/auth/logout/route.ts
+
+
+15. Interview Summary Script
+----------------------------
+
+"This project is a Next.js inventory and quotation system for AasaMedChem. The frontend uses React components and Tailwind CSS. Backend logic is handled with Next.js API routes and server actions. Prisma connects the app to a Neon PostgreSQL database. Authentication uses bcrypt for password hashing and JWT in an HTTP-only cookie. Role-based access separates Admin and Seller/User flows.
+
+Admins can manage products and review quotations. Sellers can browse products, calculate prices using flexible units, and place quotations. For unit conversion, I store all weights in grams, volumes in milliliters, and count items as units. I use decimal.js and Prisma Decimal to avoid floating-point issues in quantities and prices. Admins can see both the entered unit and converted base quantity, so the quotation is transparent and easy to verify."
+
+
+16. Good Questions Interviewer May Ask
+--------------------------------------
+
+Q: Why did you store base units?
+A: To make calculations consistent. KG and G both become G internally, L and ML both become ML internally.
+
+Q: How do you prevent KG to ML conversion?
+A: Each unit has a dimension. KG is WEIGHT, ML is VOLUME. If dimensions do not match, conversion is invalid.
+
+Q: Why use Decimal instead of number?
+A: JavaScript numbers can create floating-point precision errors. Decimal is safer for inventory quantities and money calculations.
+
+Q: How are routes protected?
+A: Middleware checks JWT and role before loading protected routes. Server guards and server actions add another protection layer.
+
+Q: What can admin do?
+A: Admin can manage products, view all quotations, and approve/reject/complete quotations.
+
+Q: What can seller do?
+A: Seller can browse products, calculate price, create quotations, and view only their own quotations.
+
+Q: What would you improve next?
+A: I would add real order conversion after quotation approval, stock deduction using database transactions, pagination, and audit logs.
+
+
+17. One-Line Project Explanation
+--------------------------------
+
+AasaMedChem is a role-based B2B pharmaceutical sourcing platform where admins manage inventory and sellers create unit-aware quotations with safe decimal pricing and transparent conversion logic.
+
