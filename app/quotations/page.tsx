@@ -34,6 +34,7 @@ export default async function UserQuotationsPage() {
             q.items.length,
             formatINR(q.totalAmount),
             <span
+              key={`${q.id}-status`}
               className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                 q.status === 'PENDING'
                   ? 'bg-yellow-100 text-yellow-800'
@@ -47,7 +48,7 @@ export default async function UserQuotationsPage() {
               {q.status}
             </span>,
             new Date(q.createdAt).toLocaleDateString(),
-            <Link href={`/quotations/${q.id}`}>
+            <Link key={`${q.id}-action`} href={`/quotations/${q.id}`}>
               <Button variant="ghost" className="text-xs">
                 View
               </Button>

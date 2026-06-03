@@ -4,18 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createQuotation } from '@/actions/quotationActions';
 import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/StateCards';
 import { formatINR, calculateProductPricing } from '@/lib/pricing';
+import { getSelectableUnitsForBaseUnit } from '@/lib/units';
 import type { ProductView } from '@/types/product';
 import type { QuotationItemData } from '@/types/quotation';
+import type { Unit } from '@/types/units';
 import Decimal from 'decimal.js';
 
 type CartItem = {
   product: ProductView;
   quantity: string;
-  unit: string;
+  unit: Unit;
 };
 
 type QuotationPlacementProps = {
@@ -28,20 +29,31 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
   const [customerName, setCustomerName] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [unit, setUnit] = useState<Unit>('G');
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
+  const selectableUnits = selectedProduct ? getSelectableUnitsForBaseUnit(selectedProduct.baseUnit) : [];
 
   function addToCart() {
+    setError(null);
+
     if (!selectedProduct || !quantity) return;
+
+    const enteredQuantity = new Decimal(quantity);
+    if (!enteredQuantity.isFinite() || enteredQuantity.lte(0)) {
+      setError('Enter a quantity greater than zero.');
+      return;
+    }
 
     const product = selectedProduct;
     const existingItem = cart.find((item) => item.product.id === product.id);
 
     if (existingItem) {
-      setCart(cart.map((item) => (item.product.id === product.id ? { ...item, quantity } : item)));
+      setCart(cart.map((item) => (item.product.id === product.id ? { ...item, quantity, unit } : item)));
     } else {
-      setCart([...cart, { product, quantity, unit: 'G' }]);
+      setCart([...cart, { product, quantity, unit }]);
     }
 
     setQuantity('');
@@ -53,7 +65,7 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
 
   const cartTotal = cart.reduce((sum, item) => {
     try {
-      const pricing = calculateProductPricing(item.quantity, item.unit as any, item.product.baseUnit as any, item.product.price);
+      const pricing = calculateProductPricing(item.quantity, item.unit, item.product.baseUnit, item.product.price);
       return sum.plus(pricing.totalPrice);
     } catch {
       return sum;
@@ -67,11 +79,11 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
 
     try {
       const quotationItems: QuotationItemData[] = cart.map((item) => {
-        const pricing = calculateProductPricing(item.quantity, item.unit as any, item.product.baseUnit as any, item.product.price);
+        const pricing = calculateProductPricing(item.quantity, item.unit, item.product.baseUnit, item.product.price);
         return {
           productId: item.product.id,
           quantity: item.quantity,
-          unit: item.unit as any,
+          unit: item.unit,
           baseQuantity: pricing.convertedBaseQuantity.toString(),
           baseUnit: pricing.baseUnit,
           unitPrice: pricing.pricePerBaseUnit.toString(),
@@ -140,7 +152,12 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
               <span className="text-sm font-medium text-slate-700">Select product</span>
               <select
                 value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
+                onChange={(e) => {
+                  const product = products.find((p) => p.id === e.target.value);
+                  setSelectedProductId(e.target.value);
+                  setUnit(product ? getSelectableUnitsForBaseUnit(product.baseUnit)[0] : 'G');
+                  setError(null);
+                }}
                 className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
               >
                 <option value="">Choose a product</option>
@@ -165,6 +182,23 @@ export function QuotationPlacement({ products }: QuotationPlacementProps) {
                     className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
                   />
                 </label>
+
+                <label className="mt-4 space-y-2 block">
+                  <span className="text-sm font-medium text-slate-700">Unit</span>
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value as Unit)}
+                    className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-sky-500 focus:outline-none"
+                  >
+                    {selectableUnits.map((selectableUnit) => (
+                      <option key={selectableUnit} value={selectableUnit}>
+                        {selectableUnit}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {error ? <p className="mt-3 text-sm font-medium text-red-600">{error}</p> : null}
 
                 <Button onClick={addToCart} className="w-full mt-4">
                   Add to cart

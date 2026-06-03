@@ -6,22 +6,22 @@ import { loginSchema } from '@/validations/authValidation';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    console.log('Login attempt:', body.email);
-    
-    const parsed = loginSchema.parse(body);
+    const parsed = loginSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0]?.message ?? 'Invalid login details.' }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({
-      where: { email: parsed.email },
+      where: { email: parsed.data.email },
     });
 
     if (!user) {
-      console.log('User not found:', parsed.email);
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 
-    const isValidPassword = await verifyPassword(parsed.password, user.password);
+    const isValidPassword = await verifyPassword(parsed.data.password, user.password);
     if (!isValidPassword) {
-      console.log('Invalid password for user:', parsed.email);
       return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
     }
 
@@ -29,11 +29,9 @@ export async function POST(req: Request) {
     const response = NextResponse.json({ user: { id: user.id, email: user.email, role: user.role } });
     response.cookies.set(createAuthCookie(token));
 
-    console.log('Login successful:', parsed.email);
     return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Login failed. Please try again.' }, { status: 500 });
   }
 }
-

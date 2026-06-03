@@ -1,8 +1,11 @@
 import { getAllProducts } from '@/lib/products';
+import { requireAuth } from '@/lib/guards';
 import { ProductCard } from '@/components/ProductCard';
 import type { ProductView } from '@/types/product';
 
 export default async function ProductBrowsingPage({ searchParams }: { searchParams?: { query?: string; category?: string } }) {
+  await requireAuth();
+
   const products = await getAllProducts();
   const categories = Array.from(new Set(products.map((product) => product.category || 'General'))).sort();
   const searchTerm = searchParams?.query?.toLowerCase() ?? '';

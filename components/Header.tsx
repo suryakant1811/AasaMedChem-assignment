@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import { LogoutButton } from '@/components/LogoutButton';
 
 export async function Header() {
   const user = await getCurrentUser();
@@ -62,9 +63,7 @@ export async function Header() {
                 </span>
               </div>
 
-              <Link href="/logout" className="rounded-2xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-900 transition">
-                Sign out
-              </Link>
+              <LogoutButton />
             </>
           ) : (
             <>

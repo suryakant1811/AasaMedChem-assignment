@@ -30,6 +30,7 @@ export default async function AdminQuotationsPage() {
             q.items.length,
             formatINR(q.totalAmount),
             <span
+              key={`${q.id}-status`}
               className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                 q.status === 'PENDING'
                   ? 'bg-yellow-100 text-yellow-800'
@@ -43,7 +44,7 @@ export default async function AdminQuotationsPage() {
               {q.status}
             </span>,
             new Date(q.createdAt).toLocaleDateString(),
-            <Link href={`/admin/quotations/${q.id}`}>
+            <Link key={`${q.id}-action`} href={`/admin/quotations/${q.id}`}>
               <Button variant="ghost" className="text-xs">
                 Review
               </Button>
