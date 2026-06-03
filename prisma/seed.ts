@@ -112,15 +112,57 @@ async function seed() {
 
   console.log('✅ Seeded products');
 
-  // Seed sample quotation
-  const quotation = await prisma.quotation.create({
+  // Seed multiple quotations for testing
+  // Quotation 1 - PENDING (for suraj admin, from seller)
+  const quotation1 = await prisma.quotation.create({
     data: {
       customer: 'City Hospital',
       userId: seller.id,
       status: 'PENDING',
+      totalAmount: new Decimal('50000'),
+      items: {
+        create: [
+          {
+            productId: paracetamol.id,
+            quantity: new Decimal('50'),
+            unit: 'KG',
+            baseQuantity: new Decimal('50000'),
+            baseUnit: 'G',
+            unitPrice: new Decimal('150'),
+            totalPrice: new Decimal('7500'),
+          },
+          {
+            productId: coughSyrup.id,
+            quantity: new Decimal('25'),
+            unit: 'L',
+            baseQuantity: new Decimal('25000'),
+            baseUnit: 'ML',
+            unitPrice: new Decimal('85'),
+            totalPrice: new Decimal('2125'),
+          },
+        ],
+      },
+    },
+  });
+
+  // Quotation 2 - APPROVED
+  const quotation2 = await prisma.quotation.create({
+    data: {
+      customer: 'Apollo Clinic',
+      userId: seller.id,
+      status: 'APPROVED',
       totalAmount: new Decimal('100000'),
       items: {
         create: [
+          {
+            productId: tablets.id,
+            quantity: new Decimal('2000'),
+            unit: 'UNIT',
+            baseQuantity: new Decimal('2000'),
+            baseUnit: 'UNIT',
+            unitPrice: new Decimal('5'),
+            totalPrice: new Decimal('10000'),
+          },
           {
             productId: paracetamol.id,
             quantity: new Decimal('100'),
@@ -130,35 +172,41 @@ async function seed() {
             unitPrice: new Decimal('150'),
             totalPrice: new Decimal('15000'),
           },
+        ],
+      },
+    },
+  });
+
+  // Quotation 3 - PENDING (different customer)
+  const quotation3 = await prisma.quotation.create({
+    data: {
+      customer: 'Max Healthcare',
+      userId: seller.id,
+      status: 'PENDING',
+      totalAmount: new Decimal('75000'),
+      items: {
+        create: [
           {
             productId: coughSyrup.id,
-            quantity: new Decimal('50'),
+            quantity: new Decimal('100'),
             unit: 'L',
-            baseQuantity: new Decimal('50000'),
+            baseQuantity: new Decimal('100000'),
             baseUnit: 'ML',
             unitPrice: new Decimal('85'),
-            totalPrice: new Decimal('4250'),
-          },
-          {
-            productId: tablets.id,
-            quantity: new Decimal('1000'),
-            unit: 'UNIT',
-            baseQuantity: new Decimal('1000'),
-            baseUnit: 'UNIT',
-            unitPrice: new Decimal('5'),
-            totalPrice: new Decimal('5000'),
+            totalPrice: new Decimal('8500'),
           },
         ],
       },
     },
   });
 
-  console.log('✅ Seeded sample quotation');
+  console.log('✅ Seeded multiple quotations');
 
   console.log('\n📊 Seed summary:');
-  console.log(`   Users: ${admin.email} (Admin), ${seller.email} (Seller)`);
-  console.log(`   Products: ${paracetamol.name}, ${coughSyrup.name}, ${tablets.name}`);
-  console.log(`   Sample quotation: ${quotation.id}`);
+  console.log(`   Admin users: ${admin.email}, suraj@gmail.com`);
+  console.log(`   Seller user: ${seller.email}`);
+  console.log(`   Products seeded: ${paracetamol.name}, ${coughSyrup.name}, ${tablets.name}`);
+  console.log(`   Quotations created: 3 (PENDING: 2, APPROVED: 1)`);
   console.log('\n✨ Database seed complete!\n');
 }
 

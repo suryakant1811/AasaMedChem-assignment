@@ -1,7 +1,9 @@
 'use client';
-
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/Button';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,34 +17,45 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setError(null);
 
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-      credentials: 'include',
-    });
+    try {
+      console.log('Submitting login form...', { email, password });
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
 
-    const data = await response.json();
-    setIsSubmitting(false);
+      console.log('Response status:', response.status);
+      const data = await response.json();
+      console.log('Response data:', data);
 
-    if (!response.ok) {
-      setError(data.error || 'Login failed.');
-      return;
+      setIsSubmitting(false);
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed.');
+        return;
+      }
+
+      if (data.user?.role === 'ADMIN') {
+        router.push('/admin');
+        return;
+      }
+
+      if (data.user?.role === 'SELLER') {
+        router.push('/seller');
+        return;
+      }
+
+      router.push('/');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred. Please try again.');
+      setIsSubmitting(false);
     }
-
-    if (data.user?.role === 'ADMIN') {
-      router.push('/admin');
-      return;
-    }
-
-    if (data.user?.role === 'SELLER') {
-      router.push('/seller');
-      return;
-    }
-
-    router.push('/');
   }
 
   return (
@@ -76,17 +89,26 @@ export default function LoginPage() {
             />
           </label>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {error ? <p className="text-sm text-red-600 font-medium">{error}</p> : null}
 
-          <button
+          <Button
             type="submit"
-            disabled={isSubmitting}
-            className="inline-flex items-center justify-center rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-50"
+            isLoading={isSubmitting}
+            className="w-full mt-4"
           >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </button>
+            Sign in
+          </Button>
         </div>
       </form>
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+        <p className="text-sm text-slate-600">Test credentials:</p>
+        <ul className="mt-3 space-y-2 text-sm font-mono text-slate-700">
+          <li>Admin: suraj@gmail.com / 11111111</li>
+          <li>Seller: seller@aasamedchem.test / Seller1234!</li>
+        </ul>
+      </div>
     </main>
   );
 }
+
