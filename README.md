@@ -1,8 +1,54 @@
 # AasaMedChem Inventory and Quotation System
 
-A small inventory, pricing, and quotation management system built for the AasaMedChem hackathon assignment.
+## My Intuition and Problem-Solving Approach
 
-The app lets admins manage pharmaceutical products and lets sellers browse products, calculate prices with unit conversion, and place quotations. Admins can review submitted quotations, inspect entered quantities versus internal base quantities, and approve, reject, or complete quotations.
+The assignment looked like a small inventory application at first, but the real challenge was not just creating CRUD pages. The important part was to design a system that can handle pharmaceutical sourcing correctly: different product units, accurate pricing, role-based access, and clear quotation review for admins.
+
+My first thought was to keep the business rules simple and consistent. In pharma procurement, the same product can be requested in different units, for example grams or kilograms, milliliters or liters. If every screen calculates these values separately, the system can easily become incorrect. So I decided to centralize unit conversion and pricing logic in dedicated files instead of mixing it inside UI components.
+
+The main design decision was to store product quantities internally in base units:
+
+- Weight products are stored in `G`
+- Volume products are stored in `ML`
+- Count products are stored in `UNIT`
+
+This makes all calculations predictable. If a seller enters `2 KG`, the system converts it to `2000 G` before calculating the quotation total. The quotation also stores both the entered unit and the converted base quantity, so the admin can verify what the seller entered and how the system calculated the price.
+
+I also wanted the application to feel like a real business tool, not just an assignment demo. That is why I added role-based dashboards, protected routes, login/logout flow, product search/filtering, quotation status management, INR formatting, seed data, and documentation.
+
+## Project Overview
+
+AasaMedChem is a role-based inventory and quotation management system for pharmaceutical sourcing.
+
+The app allows:
+
+- Admins to manage products and review quotations.
+- Sellers/users to browse products, calculate prices, and place quotations.
+- The system to handle unit conversion and decimal-safe pricing consistently.
+
+It is built for the AasaMedChem hackathon assignment using Next.js, Prisma, PostgreSQL, and Tailwind CSS.
+
+## High-Level Architecture
+
+```txt
+Browser
+  |
+  v
+Next.js App Router
+  |
+  |-- React pages and components
+  |-- API routes
+  |-- Server actions
+  |-- Middleware and server guards
+  |
+  v
+Prisma ORM
+  |
+  v
+Neon PostgreSQL Database
+```
+
+The frontend is built with React components inside the Next.js App Router. Backend operations are handled with Next.js API routes and server actions. Prisma is used as the ORM layer to connect to PostgreSQL. The database connection is configured through environment variables.
 
 ## Tech Stack
 
@@ -11,47 +57,84 @@ The app lets admins manage pharmaceutical products and lets sellers browse produ
 - Tailwind CSS
 - Prisma ORM
 - PostgreSQL, intended for Neon
-- bcrypt password hashing
-- JWT session cookie authentication
+- bcrypt for password hashing
+- JWT stored in HTTP-only cookies
+- Zod for input validation
 - decimal.js for decimal-safe calculations
 
 ## Main Features
 
-- Login, logout, and registration flows.
+- Landing page with professional AasaMedChem positioning.
+- Login, logout, and registration.
 - Role-based access for `ADMIN`, `SELLER`, and `BUYER`.
-- Admin dashboard with product and quotation management.
-- Seller/user dashboard with product catalog and quotation flow.
-- Product CRUD for admins.
+- Admin dashboard.
+- Seller/user dashboard.
+- Product CRUD for admin.
 - Product search and category filtering.
-- Flexible unit entry for quotations.
-- INR price display across products and quotations.
+- Flexible unit selection while browsing or creating quotations.
 - Decimal-safe unit conversion and pricing.
+- INR price formatting.
+- Quotation creation by sellers.
+- Quotation review and status management by admin.
 
-## Roles
+## Roles and Access
 
 ### Admin
 
 Admins can:
 
+- Access `/admin`.
 - Create, update, and delete products.
-- Configure product base unit, stock quantity, and price per base unit.
-- View all quotations.
-- Open quotation details with product, SKU, entered quantity, entered unit, converted base quantity, base unit, unit price, and total price.
-- Approve, reject, or mark quotations as completed.
+- Configure base unit, stock quantity, and price per base unit.
+- View all incoming quotations.
+- Open quotation details.
+- Verify entered quantity, entered unit, converted base quantity, unit price, and total price.
+- Approve, reject, or complete quotations.
 
 ### Seller/User
 
 Sellers can:
 
-- Browse and filter the product catalog.
-- Enter quantity in supported units.
-- See converted base quantity and total INR price.
+- Access `/seller`.
+- Browse/search/filter the product catalogue.
+- Check product pricing using different valid units.
 - Create quotations for customers.
-- View their own quotation history and quotation details.
+- View only their own quotations.
 
 ### Buyer
 
-The schema supports `BUYER` as an extra user-facing role. It is routed through the same browsing and quotation area as seller/user.
+The schema also supports `BUYER`. In the current implementation, buyer is treated as a user-facing role and follows the same catalogue and quotation area as seller/user.
+
+## Authentication and Authorization
+
+Authentication is implemented using email and password.
+
+Flow:
+
+```txt
+User submits login form
+  -> API validates input with Zod
+  -> Prisma finds user by email
+  -> bcrypt compares password
+  -> JWT is created
+  -> JWT is stored in HTTP-only cookie
+  -> User is redirected based on role
+```
+
+Important files:
+
+- `app/api/auth/login/route.ts`
+- `app/api/auth/register/route.ts`
+- `app/api/auth/logout/route.ts`
+- `lib/auth.ts`
+- `middleware.ts`
+- `lib/guards.ts`
+- `lib/authRoutes.ts`
+
+Route protection works in two layers:
+
+1. `middleware.ts` checks the JWT cookie and role before protected routes load.
+2. Server guards and action-level checks protect sensitive operations like admin quotation updates.
 
 ## Folder Structure
 
@@ -63,75 +146,94 @@ app/
   admin/                   Admin dashboard, products, quotations
   login/                   Login page
   logout/                  Auto logout page
-  products/                Product catalog/search page
+  products/                Product catalogue/search page
   quotations/              Seller quotation list/detail/new quotation flow
   register/                Registration page
   seller/                  Seller dashboard
+
 components/                Reusable UI and client components
 actions/                   Server actions for quotations and inventory
 lib/                       Auth, guards, Prisma, pricing, units, route helpers
 prisma/                    Prisma schema, migrations, seed data
 types/                     Shared TypeScript types
 validations/               Zod validation schemas
+public/                    Static assets
 ```
 
 ## Important Files
 
 - `prisma/schema.prisma`: Database models, enums, and decimal column definitions.
-- `lib/units.ts`: Unit dimensions, base unit strategy, and conversion helpers.
-- `lib/pricing.ts`: INR formatting and quote price calculation.
+- `lib/prisma.ts`: Prisma client setup.
 - `lib/auth.ts`: Password hashing, JWT creation, cookie helpers, and `getCurrentUser()`.
-- `lib/guards.ts`: Server-side route guards.
-- `middleware.ts`: Edge-compatible JWT verification and route protection.
-- `components/QuotationPlacement.tsx`: Product, quantity, unit selection, cart, and quote placement UI.
-- `components/ProductCard.tsx`: Catalog pricing calculator.
-- `actions/quotationActions.ts`: Quotation create/read/update logic with authorization checks.
+- `middleware.ts`: Route protection and role-based redirects.
+- `lib/guards.ts`: Server-side role guards.
+- `lib/units.ts`: Unit dimensions and conversion functions.
+- `lib/pricing.ts`: Price calculation and INR formatting.
+- `components/ProductCard.tsx`: Product catalogue pricing calculator.
+- `components/QuotationPlacement.tsx`: Quotation creation UI.
+- `actions/quotationActions.ts`: Quotation create/read/update logic.
 
 ## Database Design
 
-### Key tables
+### User
 
-- `User`
-  - `id String @id @default(uuid())`
-  - `email String @unique`
-  - `password String`
-  - `role UserRole`
+Stores application users.
 
-- `Product`
-  - `id String @id @default(uuid())`
-  - `name String`
-  - `sku String @unique`
-  - `category String?`
-  - `description String?`
-  - `baseUnit ProductUnit`
-  - `baseQuantity Decimal @db.Decimal(18, 4)`
-  - `price Decimal @db.Decimal(18, 4)`
+Important fields:
 
-- `Quotation`
-  - `customer String`
-  - `status DocumentStatus`
-  - `totalAmount Decimal @db.Decimal(18, 4)`
-  - `userId String?`
+- `email`
+- `password`
+- `role`
 
-- `QuotationItem`
-  - `quantity Decimal @db.Decimal(18, 4)`: quantity entered by the seller
-  - `unit ProductUnit`: unit entered by the seller
-  - `baseQuantity Decimal @db.Decimal(18, 4)`: converted internal quantity
-  - `baseUnit ProductUnit`: product internal unit
-  - `unitPrice Decimal @db.Decimal(18, 4)`: price per base unit
-  - `totalPrice Decimal @db.Decimal(18, 4)`
+### Product
 
-`Decimal(18, 4)` was chosen to avoid floating-point errors and support large values with four decimal places. Calculations use `decimal.js` in application code.
+Stores inventory items.
 
-## Unit Storage and Conversion Strategy
+Important fields:
 
-Quantities are stored internally in base units:
+- `name`
+- `sku`
+- `category`
+- `description`
+- `baseUnit`
+- `baseQuantity`
+- `price`
 
-- Weight: `G`
-- Volume: `ML`
-- Count: `UNIT`
+### Quotation
 
-Supported entered units:
+Stores quotation header data.
+
+Important fields:
+
+- `customer`
+- `status`
+- `totalAmount`
+- `userId`
+
+### QuotationItem
+
+Stores each product inside a quotation.
+
+Important fields:
+
+- `quantity`: seller-entered quantity
+- `unit`: seller-entered unit
+- `baseQuantity`: converted internal quantity
+- `baseUnit`: internal product base unit
+- `unitPrice`: price per base unit
+- `totalPrice`: calculated total
+
+Decimal fields use:
+
+```prisma
+Decimal @db.Decimal(18, 4)
+```
+
+I used Decimal because product quantity and pricing should not depend on JavaScript floating-point numbers.
+
+## Unit Conversion Strategy
+
+Supported units:
 
 - `G`
 - `KG`
@@ -139,36 +241,81 @@ Supported entered units:
 - `L`
 - `UNIT`
 
+Internal base units:
+
+```txt
+Weight -> G
+Volume -> ML
+Count  -> UNIT
+```
+
 Conversion factors:
 
-- `1 KG = 1000 G`
-- `1 G = 1 G`
-- `1 L = 1000 ML`
-- `1 ML = 1 ML`
-- `1 UNIT = 1 UNIT`
+```txt
+1 KG = 1000 G
+1 L  = 1000 ML
+1 UNIT = 1 UNIT
+```
 
-Invalid cross-dimension conversions are rejected. For example, `KG` cannot be converted to `ML`.
+Invalid conversions are blocked. For example, `KG` cannot be converted to `ML` because weight and volume are different dimensions.
 
-Conversions happen in:
+Important files:
 
-- `lib/units.ts`: dimension checks and base-unit conversion.
-- `lib/pricing.ts`: converts entered quantity to base quantity and calculates total price.
-- `components/ProductCard.tsx`: displays catalog calculation.
-- `components/QuotationPlacement.tsx`: calculates quotation item totals before saving.
+- `lib/units.ts`
+- `lib/pricing.ts`
 
 ## Pricing Strategy
 
-`Product.price` stores price per internal base unit.
+`Product.price` stores the price per internal base unit.
 
 Example:
 
-- Product base unit: `G`
-- Price: `150`
-- Seller enters: `2 KG`
-- Converted base quantity: `2000 G`
-- Total price: `2000 * 150`
+```txt
+Product base unit: G
+Price: 150 per G
+Seller enters: 2 KG
+Converted quantity: 2000 G
+Total price: 2000 * 150
+```
 
-All prices and totals are displayed using INR formatting from `formatINR()` in `lib/pricing.ts`.
+The UI displays INR values using `formatINR()` from `lib/pricing.ts`.
+
+## Main Application Flows
+
+### Seller Quotation Flow
+
+```txt
+Seller logs in
+  -> Opens product catalogue
+  -> Searches/filters products
+  -> Selects product
+  -> Enters quantity and unit
+  -> System converts to base quantity
+  -> System calculates INR total
+  -> Seller places quotation
+  -> Quotation is saved as PENDING
+```
+
+### Admin Review Flow
+
+```txt
+Admin logs in
+  -> Opens admin quotations
+  -> Reviews quotation details
+  -> Checks entered quantity and converted base quantity
+  -> Approves, rejects, or completes quotation
+  -> Status is updated in database
+```
+
+### Product Management Flow
+
+```txt
+Admin logs in
+  -> Opens products
+  -> Creates/edits/deletes products
+  -> Sets base unit, quantity, and price
+  -> Product catalogue updates for sellers
+```
 
 ## Local Setup
 
@@ -211,42 +358,21 @@ http://localhost:3000
 
 ## Test Credentials
 
-Seeded credentials:
-
 - Admin: `admin@aasamedchem.test` / `Admin1234!`
 - Admin: `suraj@gmail.com` / `11111111`
 - Seller: `seller@aasamedchem.test` / `Seller1234!`
 
-## How to Use
+## Deployment Notes
 
-### Admin flow
+To deploy:
 
-1. Log in as admin.
-2. Go to `/admin`.
-3. Use Products to create/edit/delete inventory.
-4. Use Quotations to review incoming quotations.
-5. Open a quotation to verify entered quantity, entered unit, converted base quantity, price, and total.
-6. Approve, reject, or complete the quotation.
-
-### Seller flow
-
-1. Log in as seller.
-2. Go to `/seller`.
-3. Browse products from the dashboard or `/products`.
-4. Use quantity and unit controls to check converted quantity and INR price.
-5. Go to `/quotations/new`.
-6. Select product, enter quantity, select unit, add items to cart, and place the quotation.
-7. View submitted quotations under `/quotations`.
-
-## Deployment on Vercel
-
-1. Push the repository to GitHub.
-2. Import the repository in Vercel.
-3. Add environment variables in Vercel:
+1. Push the project to GitHub.
+2. Import it in Vercel.
+3. Add environment variables:
    - `DATABASE_URL`
    - `JWT_SECRET`
-4. Run Prisma migrations against the Neon database.
-5. Deploy.
+4. Run Prisma migrations for the Neon database.
+5. Deploy from Vercel.
 
 ## Verification Commands
 
@@ -255,4 +381,12 @@ npm run lint
 npx tsc --noEmit
 npm run build
 ```
+
+## If I Had More Time
+
+The first improvement I would add is a true order and inventory deduction flow. After an admin approves or completes a quotation, the system should reduce product stock using a database transaction. I would also add pagination for large product and quotation lists, audit logs for admin actions, and automated tests for pricing and unit conversion.
+
+## Short Interview Summary
+
+This project is a role-based B2B pharmaceutical inventory and quotation system. Admins manage products and review quotations, while sellers browse products and create quotations using flexible units. The most important design choice is the unit conversion strategy: all quantities are converted into base units before pricing. This keeps calculations consistent, transparent, and safe for admin review.
 
