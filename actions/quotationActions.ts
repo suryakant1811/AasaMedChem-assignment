@@ -44,8 +44,16 @@ export async function createQuotation(customer: string, items: QuotationItemData
 }
 
 export async function getQuotationById(id: string) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    throw new Error('User not authenticated.');
+  }
+
+  const where = user.role === 'ADMIN' ? { id } : { id, userId: user.id };
+
   return prisma.quotation.findUnique({
-    where: { id },
+    where,
     include: {
       items: {
         include: { product: true },
@@ -56,6 +64,12 @@ export async function getQuotationById(id: string) {
 }
 
 export async function getAllQuotations() {
+  const user = await getCurrentUser();
+
+  if (!user || user.role !== 'ADMIN') {
+    throw new Error('Admin access is required.');
+  }
+
   return prisma.quotation.findMany({
     include: {
       items: true,
@@ -84,6 +98,12 @@ export async function getUserQuotations() {
 }
 
 export async function updateQuotationStatus(id: string, status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED') {
+  const user = await getCurrentUser();
+
+  if (!user || user.role !== 'ADMIN') {
+    throw new Error('Admin access is required.');
+  }
+
   return prisma.quotation.update({
     where: { id },
     data: { status },
