@@ -3,44 +3,102 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  SELLER
+  BUYER
+}
+
+enum ProductUnit {
+  G
+  KG
+  ML
+  L
+  UNIT
+}
+
+// Shared status enum for orders and quotations.
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model User {
+  id         String     @id @default(uuid())
+  email      String     @unique
+  password   String
+  name       String?
+  role       UserRole   @default(SELLER)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  orders     Order[]    
+  quotations Quotation[]
 }
 
 model Product {
-  id         String   @id @default(uuid())
-  name       String
-  sku        String   @unique
-  quantity   Int      @default(0)
-  price      Decimal  @db.Decimal(10, 2)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  OrderItems OrderItem[]
+  id             String        @id @default(uuid())
+  name           String
+  sku            String        @unique
+  category       String?
+  description    String?
+  baseUnit       ProductUnit
+  baseQuantity   Decimal       @db.Decimal(18, 4) // Stored in the internal base unit: grams, milliliters, or count units.
+  price          Decimal       @db.Decimal(18, 4) // Unit price stored as a Decimal for precision.
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  orderItems     OrderItem[]
+  quotationItems QuotationItem[]
 }
 
 model Order {
-  id          String       @id @default(uuid())
-  status      OrderStatus  @default(PENDING)
+  id          String         @id @default(uuid())
   customer    String
-  totalAmount Decimal      @db.Decimal(10, 2)
-  placedAt    DateTime     @default(now())
+  status      DocumentStatus @default(PENDING)
+  totalAmount Decimal        @db.Decimal(18, 4)
+  placedAt    DateTime       @default(now())
+  user        User?          @relation(fields: [userId], references: [id])
+  userId      String?
   items       OrderItem[]
 }
 
 model OrderItem {
-  id        String   @id @default(uuid())
-  order     Order    @relation(fields: [orderId], references: [id])
-  orderId   String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  quantity  Int
-  unitPrice Decimal  @db.Decimal(10, 2)
+  id         String   @id @default(uuid())
+  order      Order    @relation(fields: [orderId], references: [id])
+  orderId    String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  quantity   Decimal  @db.Decimal(18, 4) // Quantity of this product at the time of order.
+  unit       ProductUnit
+  unitPrice  Decimal  @db.Decimal(18, 4)
+  totalPrice Decimal  @db.Decimal(18, 4)
 }
 
-enum OrderStatus {
-  PENDING
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELED
+model Quotation {
+  id          String          @id @default(uuid())
+  customer    String
+  status      DocumentStatus  @default(PENDING)
+  totalAmount Decimal         @db.Decimal(18, 4)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User?           @relation(fields: [userId], references: [id])
+  userId      String?
+  items       QuotationItem[]
+}
+
+model QuotationItem {
+  id          String      @id @default(uuid())
+  quotation   Quotation   @relation(fields: [quotationId], references: [id])
+  quotationId String
+  product     Product     @relation(fields: [productId], references: [id])
+  productId   String
+  quantity    Decimal     @db.Decimal(18, 4)
+  unit        ProductUnit
+  unitPrice   Decimal     @db.Decimal(18, 4)
+  totalPrice  Decimal     @db.Decimal(18, 4)
 }
