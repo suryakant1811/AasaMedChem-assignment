@@ -19,7 +19,11 @@ export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const token = request.cookies.get(AUTH_TOKEN_NAME)?.value;
 
-  if (!pathname.startsWith('/admin') && !pathname.startsWith('/seller')) {
+  // Protected routes requiring authentication
+  const protectedPaths = ['/admin', '/seller', '/quotations', '/products'];
+  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path));
+
+  if (!isProtectedRoute) {
     return NextResponse.next();
   }
 
@@ -30,11 +34,13 @@ export function middleware(request: NextRequest) {
   try {
     const payload = verifyToken(token);
 
+    // Admin-only routes
     if (pathname.startsWith('/admin') && payload.role !== 'ADMIN') {
       return redirectToLogin(request);
     }
 
-    if (pathname.startsWith('/seller') && payload.role !== 'SELLER') {
+    // Seller/Buyer routes
+    if ((pathname.startsWith('/seller') || pathname.startsWith('/quotations')) && payload.role !== 'SELLER' && payload.role !== 'BUYER') {
       return redirectToLogin(request);
     }
 
@@ -45,5 +51,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/seller/:path*'],
+  matcher: ['/admin/:path*', '/seller/:path*', '/quotations/:path*', '/products/:path*'],
 };

@@ -92,13 +92,15 @@ model Quotation {
 }
 
 model QuotationItem {
-  id          String      @id @default(uuid())
-  quotation   Quotation   @relation(fields: [quotationId], references: [id])
-  quotationId String
-  product     Product     @relation(fields: [productId], references: [id])
-  productId   String
-  quantity    Decimal     @db.Decimal(18, 4)
-  unit        ProductUnit
-  unitPrice   Decimal     @db.Decimal(18, 4)
-  totalPrice  Decimal     @db.Decimal(18, 4)
+  id              String      @id @default(uuid())
+  quotation       Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId     String
+  product         Product     @relation(fields: [productId], references: [id])
+  productId       String
+  quantity        Decimal     @db.Decimal(18, 4) // Entered quantity
+  unit            ProductUnit // Entered unit
+  baseQuantity    Decimal     @db.Decimal(18, 4) // Converted to product base unit
+  baseUnit        ProductUnit // Product base unit
+  unitPrice       Decimal     @db.Decimal(18, 4) // Price per base unit
+  totalPrice      Decimal     @db.Decimal(18, 4) // Total price
 }
